@@ -1,0 +1,2 @@
+cl /EHsc src/main.cpp src/mongoose.c /I ../libs/websocketpp/ /I ../libs/asio/asio/include /link user32.lib gdi32.lib shell32.lib Shlwapi.lib ws2_32.lib
+mt -manifest .\main.exe.manifest -outputresource:main.exe;1
