@@ -5,6 +5,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <windows.h>
 #include <CommCtrl.h>
 
+#include "../res/resource.h"
+
 #include "layout.h"
 
 #include <functional>
@@ -148,7 +150,7 @@ Window(string title, string className, HINSTANCE hInstance)
   _::niData.cbSize = sizeof(_::niData);
   _::niData.uID = 12345;
   _::niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-  _::niData.hIcon = LoadIconA(nullptr, IDI_WINLOGO);
+  _::niData.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_MY_ICON));
   _::niData.hWnd = result;
   _::niData.uCallbackMessage = WM_APP+1;
   _::niData.uVersion = NOTIFYICON_VERSION_4;

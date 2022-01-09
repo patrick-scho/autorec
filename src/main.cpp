@@ -5,8 +5,6 @@
 #include "win.h"
 #include "ws.h"
 
-#include "../res/resource.h"
-
 #define LAY_IMPLEMENTATION
 #include "layout.h"
 
