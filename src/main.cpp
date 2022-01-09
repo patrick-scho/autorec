@@ -20,13 +20,13 @@
 void
 startRecording()
 {
-  MessageBoxA(NULL, "Start", "Start Start", MB_OK);
+  ws::sendRequest("StartRecord");
 }
 
 void
 stopRecording()
 {
-  MessageBoxA(NULL, "Stop", "Stop Stop", MB_OK);
+  ws::sendRequest("StopRecord");
 }
 
 bool
@@ -74,17 +74,20 @@ checkFullscreenWindow()
 }
 
 bool
-checkNotepadWindow()
+checkForegroundProcess(std::string exeName)
 {
   HWND fgHwnd = GetForegroundWindow();
   HANDLE fgHandle = getHwndProcess(fgHwnd);
 
   char filename[1024];
   int len = GetModuleFileNameExA(fgHandle, NULL, filename, 1024);
+  PathStripPathA(filename);
 
-  return strcmp(filename, "C:\\Windows\\System32\\notepad.exe") == 0;
+  return strcmp(filename, exeName.c_str()) == 0;
 }
 
+bool recording = false;
+HANDLE process = NULL;
 
 int WINAPI
 WinMain(HINSTANCE hInstance,
@@ -92,8 +95,6 @@ WinMain(HINSTANCE hInstance,
         LPSTR lpCmdLine,
         int nCmdShow)
 {
-  bool recording = false;
-  HANDLE process = NULL;
 
   HWND window = win::Window("Title", "MyWindowClass", hInstance);
 
@@ -108,6 +109,7 @@ WinMain(HINSTANCE hInstance,
   lay_set_size_xy(&win::_::ctx, row2, 0, 0);
   lay_set_behave(&win::_::ctx, row2, LAY_FILL);
   lay_set_contain(&win::_::ctx, row2, LAY_ROW);
+  lay_set_margins_ltrb(&win::_::ctx, row2, 5, 5, 5, 5);
   lay_id col1 = lay_item(&win::_::ctx);
   lay_set_size_xy(&win::_::ctx, col1, 80, 0);
   lay_set_behave(&win::_::ctx, col1, LAY_VCENTER);
@@ -121,11 +123,6 @@ WinMain(HINSTANCE hInstance,
   win::Callback(btnConnect, BN_CLICKED, [&]() {
     ws::connect("ws://127.0.0.1:4444");
   });
-  
-  HWND btnIdentify = win::Button(window, "Identify", row1, 100, 25, 0, 0);
-  win::Callback(btnIdentify, BN_CLICKED, [&]() {
-    ws::identify();
-  });
 
   win::Callback(cbWindowTitle, BN_CLICKED, [&]() {
     SendMessageA(cbWindowTitle, BM_SETCHECK, SendMessageA(cbWindowTitle, BM_GETCHECK, 0, 0) ? BST_UNCHECKED : BST_CHECKED, 0);
@@ -134,7 +131,7 @@ WinMain(HINSTANCE hInstance,
     SendMessageA(cbFullscreenWindow, BM_SETCHECK, SendMessageA(cbFullscreenWindow, BM_GETCHECK, 0, 0) ? BST_UNCHECKED : BST_CHECKED, 0);
   });
 
-  HWND lstActiveProcesses = win::ListBox(window, row2, 0, 0, 0, LAY_FILL);
+  HWND lstActiveProcesses = win::ListView(window, row2, 0, 0, 0, LAY_FILL);
   lay_insert(&win::_::ctx, row2, col1);
   HWND lstMonitoredProcesses = win::ListBox(window, row2, 0, 0, 0, LAY_FILL);
   win::AddStyle(lstActiveProcesses, WS_VSCROLL);
@@ -189,28 +186,27 @@ WinMain(HINSTANCE hInstance,
     win::ListRemove(lstMonitoredProcesses, sel);
   });
 
-
-  win::ShowNotificationIcon(hInstance, window);
-
   win::ShowWindow(window);
 
   ws::init();
 
-  while (win::UpdateWindow(window)) {
-    ws::update();
-
+  SetTimer(window, 10123, 100, [](HWND, UINT, UINT_PTR, DWORD) {
     if (!recording) {
-      if (checkNotepadWindow()) {
+      if (checkForegroundProcess("League of Legends.exe")) {
+        recording = true;
         process = getHwndProcess(GetForegroundWindow());
         startRecording();
-        recording = true;
       }
     } else {
       if (!checkProcessRunning(process)) {
+        recording = false;
         process = NULL;
         stopRecording();
-        recording = false;
       }
     }
+  });
+
+  while (win::UpdateWindow(window)) {
+    ws::update();
   }
 }
