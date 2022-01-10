@@ -46,7 +46,6 @@ namespace win
   struct Window : Hwnd
   {
   private:
-    NOTIFYICONDATAA niData = { 0 };
 
     static LRESULT CALLBACK
     WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -62,17 +61,11 @@ namespace win
           DestroyWindow(hwnd);
           break;
         case WM_DESTROY:
-          Shell_NotifyIconA(NIM_DELETE, &window->niData);
           lay_destroy_context(&window->ctx);
           PostQuitMessage(0);
           break;
         case WM_SIZE:
-          if (wParam == SIZE_MINIMIZED) {
-            //TODO: auslagen
-            //ShowNotificationIcon();
-            ShowWindow(hwnd, false);
-          }
-          else {
+          if (wParam != SIZE_MINIMIZED) {
             lay_set_size_xy(&window->ctx, window->lId, LOWORD(lParam), HIWORD(lParam));
             lay_run_context(&window->ctx);
 
@@ -81,23 +74,8 @@ namespace win
           break;
         case WM_NOTIFY:
           break;
-        case WM_APP + 1:
-          if (LOWORD(lParam) == NIN_SELECT) {
-            //TODO: auslagern
-            //HideNotificationIcon();
-            ShowWindow(hwnd, true);
-            SetForegroundWindow(hwnd);
-            SetActiveWindow(hwnd);
-          }
-          break;
         case WM_CTLCOLORSTATIC:
-          return (LONG)GetStockObject(WHITE_BRUSH);
-        case WM_GETMINMAXINFO: {
-          MINMAXINFO *mmInfo = (MINMAXINFO*)lParam;
-          mmInfo->ptMinTrackSize.x = 400;
-          mmInfo->ptMinTrackSize.y = 200;
-          break;
-        }
+          return (LONG_PTR)GetStockObject(WHITE_BRUSH);
         default:
           defaultHandler = true;
           break;
@@ -126,12 +104,12 @@ namespace win
       wc.cbClsExtra = 0;
       wc.cbWndExtra = sizeof(Window*);
       wc.hInstance = hInstance;
-      wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
-      wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+      wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON_WHITE));
+      wc.hCursor = LoadCursor(hInstance, IDC_ARROW);
       wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
       wc.lpszMenuName = nullptr;
       wc.lpszClassName = className.c_str();
-      wc.hIconSm = LoadIcon(nullptr, IDI_APPLICATION);
+      wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON_WHITE));
       RegisterClassExA(&wc);
 
       lay_init_context(&ctx);
@@ -151,15 +129,6 @@ namespace win
                           nullptr);
 
       SetWindowLongPtrA(hwnd, 0, (LONG_PTR)this);
-      
-                          
-      niData.cbSize = sizeof(niData);
-      niData.uID = 12345;
-      niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-      niData.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_MY_ICON));
-      niData.hWnd = hwnd;
-      niData.uCallbackMessage = WM_APP+1;
-      niData.uVersion = NOTIFYICON_VERSION_4;
     }
     bool update()
     {
@@ -174,7 +143,9 @@ namespace win
     void show()
     {
       ShowWindow(hwnd, true);
-
+    }
+    void setDefaultFont()
+    {
       EnumChildWindows(
         hwnd,
         [](HWND hwnd, LPARAM lParam) -> BOOL {

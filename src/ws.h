@@ -4,6 +4,7 @@
 using json = nlohmann::json;
 
 #include <string>
+#include <functional>
 
 namespace ws
 {
@@ -12,10 +13,14 @@ namespace ws
 
   bool done = false;
 
+  std::function<void()> onConnect;
+
   static void cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_WS_OPEN) {
+      puts("Open");
     } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *) ev_data;
+      printf("Msg: %.*s\n", (int)wm->data.len, wm->data.ptr);
       std::string jsonStr(wm->data.ptr, wm->data.len);
       auto msg = json::parse(jsonStr);
       int op = msg["op"].get<int>();
@@ -32,16 +37,18 @@ namespace ws
       }
       else if (op == 2)
       {
-        MessageBoxA(NULL, "hura", "connected", MB_OK);
+        puts("Connected");
+        if (onConnect)
+          onConnect();
       }
     }
 
     if (ev == MG_EV_ERROR) {
-      MessageBoxA(NULL, "", "Error", MB_OK);
+      puts("Error");
       done = true;
     }
     if (ev == MG_EV_CLOSE) {
-      MessageBoxA(NULL, "", "Close", MB_OK);
+      puts("Close");
       done = true;
     }
   }

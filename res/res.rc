@@ -1,3 +1,5 @@
 #include "resource.h"
 
-IDI_MY_ICON ICON "msys2.ico"
+IDI_ICON_WHITE ICON "icon_white.ico"
+IDI_ICON_GREEN ICON "icon_green.ico"
+IDI_ICON_RED   ICON "icon_red.ico"
