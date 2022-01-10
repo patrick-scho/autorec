@@ -101,32 +101,32 @@ int main(int argc, char **argv)
   lay_context *ctx = &window.ctx;
   lay_id root = window.lId;
 
-  win::Hwnd row1(&window, &window, 0, 0, 0, 25, LAY_ROW, LAY_LEFT);
-  lay_set_margins_ltrb(ctx, row1.lId, 5, 5, 5, 5);
-  win::Hwnd row2(&window, &window, 0, 0, 0, 0, LAY_ROW, LAY_FILL);
-  lay_set_margins_ltrb(ctx, row2.lId, 5, 5, 5, 5);
+  lay_id row1 = win::createLayId(&window.ctx, window.lId, 0, 25, LAY_ROW, LAY_LEFT);
+  lay_set_margins_ltrb(ctx, row1, 5, 5, 5, 5);
+  lay_id row2 = win::createLayId(&window.ctx, window.lId, 0, 0, LAY_ROW, LAY_FILL);
+  lay_set_margins_ltrb(ctx, row2, 5, 5, 5, 5);
 
-  win::CheckBox cbWindowTitle(&window, &row1, "Window Title", 100, 25, 0, 0);
-  win::CheckBox cbFullscreenWindow(&window, &row1, "Any Fullscreen Application", 200, 25, 0, 0);
+  win::CheckBox cbWindowTitle(&window, "Window Title", row1, 100, 25, 0, 0);
+  win::CheckBox cbFullscreenWindow(&window, "Any Fullscreen Application", row1, 200, 25, 0, 0);
 
-  win::Button btnConnect(&window, &row1, "Connect", 100, 25, 0, 0);
+  win::Button btnConnect(&window, "Connect", row1, 100, 25, 0, 0);
   btnConnect.onClick([&]() {
     ws::connect("ws://127.0.0.1:4444");
   });
 
-  win::ListBox lstActiveProcesses(&window, &row2, 0, 0, 0, LAY_FILL);
+  win::ListBox lstActiveProcesses(&window, row2, 0, 0, 0, LAY_FILL);
   
-  win::Hwnd col1(&window, &row2, 0, 0, 80, 0, LAY_COLUMN, LAY_VCENTER);
-  lay_set_margins_ltrb(ctx, col1.lId, 5, 0, 5, 0);
+  lay_id col1 = win::createLayId(&window.ctx, row2, 80, 0, LAY_COLUMN, LAY_VCENTER);
+  lay_set_margins_ltrb(ctx, col1, 5, 0, 5, 0);
 
-  win::ListBox lstMonitoredProcesses(&window, &row2, 0, 0, 0, LAY_FILL);
+  win::ListBox lstMonitoredProcesses(&window, row2, 0, 0, 0, LAY_FILL);
   lstActiveProcesses.addStyle(WS_VSCROLL);
   lstMonitoredProcesses.addStyle(WS_VSCROLL);
 
-  win::Button btnUpdateWindows(&window, &col1, "Update", 85, 25, 0, 0);
-  win::Button btnStartMonitoringName(&window, &col1, "Exe name >>", 85, 25, 0, 0);
-  win::Button btnStartMonitoringPath(&window, &col1, "Full path >>", 85, 25, 0, 0);
-  win::Button btnStopMonitoring(&window, &col1, "Remove", 85, 25, 0, 0);
+  win::Button btnUpdateWindows(&window, "Update", col1, 85, 25, 0, 0);
+  win::Button btnStartMonitoringName(&window, "Exe name >>", col1, 85, 25, 0, 0);
+  win::Button btnStartMonitoringPath(&window, "Full path >>", col1, 85, 25, 0, 0);
+  win::Button btnStopMonitoring(&window, "Remove", col1, 85, 25, 0, 0);
   btnUpdateWindows.onClick([&]() {
     lstActiveProcesses.clear();
     for (HWND hwnd = GetTopWindow(NULL); hwnd != nullptr;
