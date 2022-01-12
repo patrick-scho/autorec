@@ -1,5 +1,9 @@
 #include "resource.h"
 
+1 24 main.exe.manifest
+
+MAIN_ICON      ICON "icon_green.ico"
+
 IDI_ICON_WHITE ICON "icon_white.ico"
 IDI_ICON_GREEN ICON "icon_green.ico"
 IDI_ICON_RED   ICON "icon_red.ico"

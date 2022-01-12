@@ -44,7 +44,7 @@ namespace ws
     }
 
     if (ev == MG_EV_ERROR) {
-      puts("Error");
+      printf("Error: %s\n", (char*)ev_data);
       done = true;
     }
     if (ev == MG_EV_CLOSE) {
@@ -75,7 +75,7 @@ namespace ws
                       { "d",
                         {
                           { "requestType", requestType },
-                          { "requestId", std::to_string(NULL).c_str() }
+                          { "requestId", std::to_string(time(nullptr)).c_str() }
                         } } };
     auto requestStr = request.dump();
     mg_ws_send(c, requestStr.c_str(), requestStr.size(), WEBSOCKET_OP_TEXT);

@@ -39,10 +39,9 @@ HideNotificationIcon()
 void changeIcon(HWND hwnd, HINSTANCE hInstance, WORD id)
 {
   HICON icon = LoadIcon(hInstance, MAKEINTRESOURCE(id));
-  HideNotificationIcon();
   niData.hIcon = icon;
   if (! IsWindowVisible(hwnd))
-    ShowNotificationIcon();
+    Shell_NotifyIconA(NIM_MODIFY, &niData);
   SendMessage(hwnd, WM_SETICON, 0, (LPARAM)icon);
   SendMessage(hwnd, WM_SETICON, 1, (LPARAM)icon);
 }
@@ -188,7 +187,7 @@ WinMain(HINSTANCE hInstance,
   
   lay_id col1 = win::createLayId(&window.ctx, row2, 80, 0, LAY_COLUMN, LAY_VCENTER);
   lstActiveProcesses.addStyle(WS_VSCROLL);
-  
+
   lay_set_margins_ltrb(ctx, col1, 5, 0, 5, 0);
 
   win::ListBox lstMonitoredProcesses(&window, row2, 0, 0, 0, LAY_FILL);
@@ -253,7 +252,7 @@ WinMain(HINSTANCE hInstance,
 
   SetTimer(window.hwnd, 10123, 100, [](HWND, UINT, UINT_PTR, DWORD) {
     if (!recording) {
-      if (checkForegroundProcess("notepad.exe")) {
+      if (checkForegroundProcess("League of Legends.exe")) {
         recording = true;
         process = getHwndProcess(GetForegroundWindow());
         startRecording();
@@ -270,4 +269,6 @@ WinMain(HINSTANCE hInstance,
   while (window.update()) {
     ws::update();
   }
+
+  return 0;
 }
