@@ -8,6 +8,10 @@
 #define LAY_IMPLEMENTATION
 #include "layout.h"
 
+#include <fstream>
+#include <vector>
+#include <string>
+
 #include <Psapi.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -19,6 +23,9 @@ bool recording = false;
 HANDLE process = NULL;
 HWND hwnd;
 HINSTANCE hInstance;
+HICON icon_white, icon_green, icon_red;
+
+std::vector<std::string> gameExes;
 
 
 NOTIFYICONDATAA niData = { 0 };
@@ -36,9 +43,8 @@ HideNotificationIcon()
   Shell_NotifyIconA(NIM_DELETE, &niData);
 }
 
-void changeIcon(HWND hwnd, HINSTANCE hInstance, WORD id)
+void changeIcon(HWND hwnd, HICON icon)
 {
-  HICON icon = LoadIcon(hInstance, MAKEINTRESOURCE(id));
   niData.hIcon = icon;
   if (! IsWindowVisible(hwnd))
     Shell_NotifyIconA(NIM_MODIFY, &niData);
@@ -52,14 +58,14 @@ void
 startRecording()
 {
   ws::sendRequest("StartRecord");
-  changeIcon(hwnd, hInstance, IDI_ICON_GREEN);
+  changeIcon(hwnd, icon_green);
 }
 
 void
 stopRecording()
 {
   ws::sendRequest("StopRecord");
-  changeIcon(hwnd, hInstance, IDI_ICON_RED);
+  changeIcon(hwnd, icon_red);
 }
 
 bool
@@ -112,12 +118,52 @@ checkForegroundProcess(std::string exeName)
   HWND fgHwnd = GetForegroundWindow();
   HANDLE fgHandle = getHwndProcess(fgHwnd);
 
-  char filename[1024];
-  int len = GetModuleFileNameExA(fgHandle, NULL, filename, 1024);
+  char filename[MAX_PATH];
+  int len = GetModuleFileNameExA(fgHandle, NULL, filename, MAX_PATH);
+
+  if (strcmp(filename, exeName.c_str()) == 0)
+    return true;
+
   PathStripPathA(filename);
 
   return strcmp(filename, exeName.c_str()) == 0;
 }
+
+void ReadGameExes()
+{
+  std::ifstream ifs("games.txt");
+
+  gameExes.clear();
+
+  while (ifs) {
+    std::string str;
+    std::getline(ifs, str);
+    if (! str.empty())
+      gameExes.push_back(str);
+  }
+
+  ifs.close();
+}
+
+void WriteGameExes()
+{
+  std::ofstream ofs("games.txt", std::ios::trunc);
+
+  for (const auto &exe : gameExes)
+  {
+    ofs.write(exe.c_str(), exe.size());
+    ofs.write("\n", 1);
+  }
+
+  ofs.close();
+}
+
+/*
+TODO:
+  - Disconnect while recording
+*/
+
+
 
 int WINAPI
 WinMain(HINSTANCE hInstance,
@@ -128,13 +174,17 @@ WinMain(HINSTANCE hInstance,
 {
   hInstance = GetModuleHandle(0);
 
+  icon_white = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_ICON_WHITE));
+  icon_green = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_ICON_GREEN));
+  icon_red = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_ICON_RED));
+
   win::Window window("Title", "MyWindowClass", hInstance);
   hwnd = window.hwnd;
 
   niData.cbSize = sizeof(niData);
   niData.uID = 12345;
   niData.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-  niData.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_ICON_WHITE));
+  niData.hIcon = icon_white;
   niData.hWnd = window.hwnd;
   niData.uCallbackMessage = ICON_MSG;
   niData.uVersion = NOTIFYICON_VERSION_4;
@@ -176,11 +226,8 @@ WinMain(HINSTANCE hInstance,
 
   win::Button btnConnect(&window, "Connect", row1, 100, 25, 0, 0);
   btnConnect.onClick([&]() {
-    ws::connect("ws://127.0.0.1:4444");
-  });
-  win::Button btnTest(&window, "Test", row1, 100, 25, 0, 0);
-  btnTest.onClick([&]() {
-    changeIcon(window.hwnd, hInstance, IDI_ICON_GREEN);
+    if (! ws::isConnected)
+      ws::connect("ws://127.0.0.1:4455");
   });
 
   win::ListBox lstActiveProcesses(&window, row2, 0, 0, 0, LAY_FILL);
@@ -192,6 +239,10 @@ WinMain(HINSTANCE hInstance,
 
   win::ListBox lstMonitoredProcesses(&window, row2, 0, 0, 0, LAY_FILL);
   lstMonitoredProcesses.addStyle(WS_VSCROLL);
+
+  ReadGameExes();
+  for (const auto &exe : gameExes)
+    lstMonitoredProcesses.addString(exe);
 
   win::Button btnUpdateWindows(&window, "Update", col1, 85, 25, 0, 0);
   win::Button btnStartMonitoringName(&window, "Exe name >>", col1, 85, 25, 0, 0);
@@ -220,12 +271,19 @@ WinMain(HINSTANCE hInstance,
 
     std::string selStr = lstActiveProcesses.getText(sel);
     
-    char *filename = new char[selStr.size()];
+    char *filename = new char[selStr.size()+1];
     std::memcpy(filename, selStr.c_str(), selStr.size());
+    filename[selStr.size()] = '\0';
     PathStripPathA(filename);
 
-    if (lstMonitoredProcesses.findString(std::string(filename)) == LB_ERR)
-      lstMonitoredProcesses.addString(std::string(filename));
+    std::string filenameStr(filename);
+
+    if (lstMonitoredProcesses.findString(filenameStr) == LB_ERR)
+    {
+      lstMonitoredProcesses.addString(filenameStr);
+      gameExes.push_back(filenameStr);
+      WriteGameExes();
+    }
 
     delete[] filename;
   });
@@ -234,28 +292,47 @@ WinMain(HINSTANCE hInstance,
     if (sel < 0) return;
     std::string selStr = lstActiveProcesses.getText(sel);
     if (lstMonitoredProcesses.findString(selStr) == LB_ERR)
-    lstMonitoredProcesses.addString(selStr);
+    {
+      lstMonitoredProcesses.addString(selStr);
+      gameExes.push_back(selStr);
+      WriteGameExes();  
+    }
   });
   btnStopMonitoring.onClick([&]() {
     int sel = lstMonitoredProcesses.getSelectedIndex();
     if (sel < 0) return;
     lstMonitoredProcesses.remove(sel);
+    gameExes.erase(gameExes.begin() + sel);
+    WriteGameExes();
   });
 
   window.show();
   window.setDefaultFont();
 
   ws::onConnect = [&]() {
-    changeIcon(window.hwnd, hInstance, IDI_ICON_RED);
+    changeIcon(window.hwnd, icon_red);
+    btnConnect.setActive(false);
   };
+  ws::onClose = [&]() {
+    changeIcon(window.hwnd, icon_white);
+    btnConnect.setActive(true);
+  };
+  ws::onError = ws::onClose;
   ws::init();
 
-  SetTimer(window.hwnd, 10123, 100, [](HWND, UINT, UINT_PTR, DWORD) {
+  window.setTimer(1000, [&btnConnect]() {
+    if (! ws::isConnected)
+      ws::connect("ws://127.0.0.1:4455");
+  });
+
+  window.setTimer(100, []() {
     if (!recording) {
-      if (checkForegroundProcess("League of Legends.exe")) {
-        recording = true;
-        process = getHwndProcess(GetForegroundWindow());
-        startRecording();
+      for (auto exe : gameExes) {
+        if (checkForegroundProcess(exe)) {
+          recording = true;
+          process = getHwndProcess(GetForegroundWindow());
+          startRecording();
+        } 
       }
     } else {
       if (!checkProcessRunning(process)) {

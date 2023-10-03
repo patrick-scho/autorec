@@ -1,7 +1,3 @@
-#pragma comment(linker, "\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
 #include <windows.h>
 #include <CommCtrl.h>
 
@@ -41,6 +37,10 @@ namespace win
     void removeStyle(DWORD style)
     {
       SetWindowLongPtrA(hwnd, GWL_STYLE, getStyle() & (~style));
+    }
+    void setActive(bool active)
+    {
+      EnableWindow(hwnd, active);
     }
   };
   struct Window : Hwnd
@@ -94,6 +94,12 @@ namespace win
     std::unordered_map<UINT,
       std::vector<
         std::function<void(HWND, UINT, WPARAM, LPARAM)>>> handlers;
+
+    struct Timer {
+      bool active = true;
+      std::function<void()> f;
+    };
+    std::vector<Timer> timers;
 
     Window(std::string title, std::string className, HINSTANCE hInstance)
     {
@@ -154,6 +160,19 @@ namespace win
           return TRUE;
         },
         0);
+    }
+    void setTimer(UINT interval, std::function<void()> cb)
+    {
+      SetTimer(this->hwnd, timers.size() + 1000, interval, [](HWND hwnd, UINT uMsg, UINT_PTR uIdEvent, DWORD dwTime) {
+        Window *window = (Window*)GetWindowLongPtrA(hwnd, 0);
+        if (window == nullptr)
+          return;
+
+        window->timers[uIdEvent-1000].f();
+      });
+      Timer t;
+      t.f = cb;
+      timers.push_back(t);
     }
   };
 

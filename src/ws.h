@@ -11,13 +11,16 @@ namespace ws
   mg_mgr mgr;
   mg_connection *c = nullptr;
 
-  bool done = false;
+  bool isConnected = false;
 
   std::function<void()> onConnect;
+  std::function<void()> onClose;
+  std::function<void()> onError;
 
   static void cb(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
     if (ev == MG_EV_WS_OPEN) {
       puts("Open");
+      isConnected = true;
     } else if (ev == MG_EV_WS_MSG) {
       struct mg_ws_message *wm = (struct mg_ws_message *) ev_data;
       printf("Msg: %.*s\n", (int)wm->data.len, wm->data.ptr);
@@ -45,11 +48,15 @@ namespace ws
 
     if (ev == MG_EV_ERROR) {
       printf("Error: %s\n", (char*)ev_data);
-      done = true;
+      isConnected = false;
+      if (onError)
+          onError();
     }
     if (ev == MG_EV_CLOSE) {
       puts("Close");
-      done = true;
+      isConnected = false;
+      if (onClose)
+        onClose();
     }
   }
 
@@ -65,7 +72,7 @@ namespace ws
 
   void update()
   {
-    if (c && !done)
+    if (c)
       mg_mgr_poll(&mgr, 10);
   }
 
